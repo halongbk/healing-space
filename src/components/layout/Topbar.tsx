@@ -1,72 +1,102 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { LogOut, ChevronDown } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Topbar() {
   const [activeSound, setActiveSound] = useState<string | null>(null);
   const [timeStr, setTimeStr] = useState<string>("");
   const [toast, setToast] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Lưu trữ Audio objects
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
-    // Khởi tạo audio chỉ ở client-side
+    // Khởi tạo audio
     audioRefs.current = {
       rain: new Audio("/sounds/rain.mp3"),
       forest: new Audio("/sounds/forest.mp3"),
       cafe: new Audio("/sounds/cafe.mp3"),
     };
-
-    // Đặt vòng lặp vô tận cho hiệu ứng âm thanh nền
     Object.values(audioRefs.current).forEach((audio) => {
       audio.loop = true;
+      audio.volume = 0.35;
     });
 
+    // Clock
     const updateTime = () => {
       const now = new Date();
       setTimeStr(now.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
     };
-    
     updateTime();
     const timer = setInterval(updateTime, 1000);
 
+    // Lấy thông tin user
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        const name = user.user_metadata?.display_name || user.email?.split("@")[0] || "User";
+        setUserName(name);
+      }
+    });
+
+    // Click outside to close menu
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+
     return () => {
       clearInterval(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
       Object.values(audioRefs.current).forEach((audio) => {
         audio.pause();
         audio.src = "";
       });
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleSound = (soundId: string) => {
     const audioItems = audioRefs.current;
-    
+
     if (activeSound === soundId) {
-      // Tắt nếu click lại âm thanh đang chạy
       audioItems[soundId]?.pause();
       setActiveSound(null);
     } else {
-      // Tắt âm thanh cũ
       if (activeSound && audioItems[activeSound]) {
         audioItems[activeSound].pause();
       }
-      
-      // Bật âm thanh mới
       const newAudio = audioItems[soundId];
       if (newAudio) {
         newAudio.play().then(() => {
           setActiveSound(soundId);
         }).catch(() => {
-          // Lỗi nếu file mp3 chưa có trong public/sounds/
           showToast("Chưa có file âm thanh");
           setActiveSound(null);
         });
       }
     }
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    // Tắt âm thanh
+    Object.values(audioRefs.current).forEach((audio) => {
+      audio.pause();
+    });
+    await supabase.auth.signOut();
+    router.push("/login");
   };
 
   const showToast = (message: string) => {
@@ -83,29 +113,28 @@ export default function Topbar() {
   return (
     <>
       <header className="sticky top-0 z-[100] h-[54px] w-full bg-[rgba(247,244,238,0.93)] backdrop-blur-sm border-b border-cream-3 flex items-center justify-between px-4 md:px-6">
-        {/* Box trái: Logo & Tagline */}
+        {/* Logo & Tagline */}
         <div className="flex items-center gap-4">
           <Link href="/rooms" className="flex items-center text-xl text-ink">
             <span className="font-serif">Healing</span>
             <em className="font-serif italic text-moss ml-1 font-light pr-1">Space</em>
           </Link>
-
-          {/* Tagline (Ẩn trên mobile) */}
           <span className="hidden md:inline-block text-[13px] text-muted opacity-80 border-l border-cream-3 pl-4 ml-2">
             Your quiet corner &middot; Không gian riêng của bạn
           </span>
         </div>
 
-        {/* Box phải: Nút âm thanh & Đồng hồ */}
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-2">
+        {/* Sound buttons + Clock + User */}
+        <div className="flex items-center gap-3 md:gap-5">
+          {/* Sound buttons */}
+          <div className="flex items-center gap-1.5 md:gap-2">
             {sounds.map((s) => (
               <button
                 key={s.id}
                 onClick={() => toggleSound(s.id)}
-                className={`flex items-center justify-center w-[34px] h-[34px] rounded-full border transition-all text-sm
-                  ${activeSound === s.id 
-                    ? "bg-moss-light text-moss border-moss/30 shadow-sm" 
+                className={`flex items-center justify-center w-[32px] h-[32px] md:w-[34px] md:h-[34px] rounded-full border transition-all text-sm
+                  ${activeSound === s.id
+                    ? "bg-moss-light text-moss border-moss/30 shadow-sm"
                     : "border-cream-3 text-muted hover:bg-cream-2 hover:border-hint/30"}`}
                 title={s.label}
               >
@@ -114,14 +143,64 @@ export default function Topbar() {
             ))}
           </div>
 
-          {/* Đồng hồ digital (Ẩn trên mobile) */}
+          {/* Clock (desktop) */}
           <div className="hidden md:block font-serif text-xl tracking-wide font-light text-ink min-w-[50px] text-right">
             {timeStr}
           </div>
+
+          {/* Divider */}
+          {userName && (
+            <div className="hidden md:block w-px h-6 bg-cream-3" />
+          )}
+
+          {/* User Menu */}
+          {userName && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-full hover:bg-cream-2 transition-all"
+              >
+                {/* Avatar circle */}
+                <div className="w-[28px] h-[28px] rounded-full bg-moss-light text-moss text-[12px] font-semibold flex items-center justify-center border border-moss/20">
+                  {userName.charAt(0).toUpperCase()}
+                </div>
+                <span className="hidden md:block text-[13px] text-ink font-medium max-w-[120px] truncate">
+                  {userName}
+                </span>
+                <ChevronDown size={14} className={`hidden md:block text-hint transition-transform ${showUserMenu ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* Dropdown */}
+              <AnimatePresence>
+                {showUserMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-[calc(100%+6px)] bg-white border border-cream-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] w-[200px] overflow-hidden z-50"
+                  >
+                    <div className="px-4 py-3 border-b border-cream-3">
+                      <p className="text-[13px] font-medium text-ink truncate">{userName}</p>
+                      <p className="text-[11px] text-hint mt-0.5">Thành viên</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      disabled={isLoggingOut}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-muted hover:bg-cream hover:text-rose transition-all disabled:opacity-50"
+                    >
+                      <LogOut size={15} />
+                      {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </header>
-      
-      {/* Thông báo Toast hiện lên khi lỗi/tin nhắn */}
+
+      {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div

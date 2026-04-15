@@ -1,8 +1,18 @@
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
 /**
- * Trang chủ — tự động chuyển hướng đến /rooms
+ * Trang chủ — redirect dựa trên trạng thái auth
+ * - Đã đăng nhập → /rooms
+ * - Chưa đăng nhập → /login
  */
-export default function HomePage() {
-  redirect("/rooms");
+export default async function HomePage() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect("/rooms");
+  } else {
+    redirect("/login");
+  }
 }
