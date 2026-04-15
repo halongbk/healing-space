@@ -1,29 +1,45 @@
 # Project State Handoff
-Date: 2026-04-13
+Date: 2026-04-15
 
-## 📍 Tôi đang ở đâu (Quá trình thực thi)
+## Tôi đang ở đâu
 
-Chúng ta vừa dứt điểm **Giai đoạn 6: Hoàn thiện Authentication toàn phần** cho dự án Healing Space. Toàn bộ kiến trúc cốt lõi đã sẵn sàng:
-1. **Frontend**: Đã convert hoàn hảo 5 phòng chức năng (Breathe, Still, Create, Feel, Recharge) sang kiến trúc React Component có hiệu ứng Framer Motion mượt mà.
-2. **Backend / Middleware**: Setup `middleware.ts` bảo vệ mọi page thuộc `/rooms`. Người dùng chưa có phiên làm việc (Session) sẽ bị redirect qua form. 
-3. **Authentication**: Thiết kế UI cực chất ở `/login` và xử lý Auth Logic chặt chẽ tại `src/app/login/actions.ts` nhờ Server Actions và bộ SDK mới `@supabase/ssr`.
-4. **Database Config**: Hệ thống biến môi trường `.env.local` đã mang khóa thật của dự án nhờ sự hỗ trợ đắc lực từ Agent nội bộ móc thẳng vào API của MCP (Model Context Protocol).
+**Giai đoạn 7: Database Schema + RLS — HOÀN THÀNH**
+
+Đã hoàn thành toàn bộ setup từ Giai đoạn 2 đến 7:
+1. **Supabase Auth** — `src/lib/supabase/client.ts` (Browser) + `server.ts` (Server) đúng chuẩn `@supabase/ssr`
+2. **Middleware** — `src/middleware.ts` bảo vệ `/rooms`, `/dashboard`, redirect `/login`
+3. **Login UI** — `src/app/login/page.tsx` + `actions.ts` (Server Actions)
+4. **5 Rooms** — Component React đầy đủ: Breathe, Still, Feel, Create, Recharge
+5. **Layout** — Topbar, Sidebar (responsive), Hero (đổi màu theo phòng), Toast
+6. **Database Schema** — 3 bảng Supabase với RLS đầy đủ:
+   - `gratitude_jar` — Hũ biết ơn (user_id, content, created_at)
+   - `mood_logs` — Lịch sử cảm xúc (user_id, mood, logged_at)
+   - `journal_releases` — Đếm lần thả tâm thư (user_id, released_at)
+7. **TypeScript types** — `src/types/database.types.ts` sinh từ Supabase
 
 ---
 
-## 🛑 Decisions & Workarounds
-- *Quyết định*: Khách dùng Form `/login` không cần thiết lập xác thực email rườm rà. Server Action sẽ tạo account và `redirect(/rooms)` luôn vì môi trường của mình ưu tiên tốc độ relax. User config tắt "Confirm email" tại Dashboard Supabase là được.
-- *Quyết định*: Auth State không đi qua React Context phiền phức, thay vào đó đi qua Guard của Next `middleware.ts` nên hệ thống render rất bay và nhanh.
+## Decisions & Notes
+
+- Sử dụng `@supabase/ssr` (KHÔNG dùng `@supabase/auth-helpers` cũ)
+- `src/middleware.ts` là middleware chính — KHÔNG tạo `middleware.ts` ở root
+- `public/sounds/` chưa có file `.mp3` — Topbar sound buttons sẽ báo 404
+- Project chưa có GitHub remote — cần: `git remote add origin <URL>` rồi `git push`
 
 ---
 
-## ✉️ Messages for next Agent:
+## Messages for next Agent (Giai đoạn 8):
 
-1. ⚠️ **Chỉ dùng Supabase SSR Modules**: Tuyệt đối sử dụng `createClient` định nghĩa tại `src/lib/supabase/client.ts` cho Front-end và `server.ts` cho Back-end. KHÔNG tải hay dùng thư viện `@supabase/auth-helpers` cũ. Dữ liệu Auth do Next.js lưu vào Cookie bảo mật.
+1. NEXT STEP: Thay `localStorage` trong `FeelRoom.tsx` (Gratitude Jar + mood) bằng Supabase:
+   - Import `database.types.ts` để có type safety
+   - Dùng `createClient()` từ `src/lib/supabase/client.ts`
+   - `supabase.from('gratitude_jar').select().eq('user_id', user.id)`
+   - `supabase.from('mood_logs').insert({ user_id, mood })`
 
-2. ⚠️ **Quản lý âm thanh (TOPBAR)**: Hiện tại `/components/layout/Topbar.tsx` đã thiết kế hệ thống bấm nút mưa/tiếng rừng nhưng còn **thiếu file `.mp3`**. Agent xử lý giai đoạn tới hãy nhớ tải hoặc bổ sung tài nguyên ảo vào `public/sounds/` để script chạy không báo 404 nhé.
+2. Thay mood tracking trong `Sidebar.tsx` (localStorage -> `mood_logs` table)
 
-3. 🎯 **NEXT STEP FOCUS (Giai đoạn 7)**:
-   - Những tính năng ở **Feel Room** (Biết Ơn, Gửi tâm thư) hiện chỉ đang ghi tạm bằng `window.localStorage`.
-   - Lượt tiếp theo, hãy chuyển sang Thiết lập Cấu trúc Table (Schema) trên Supabase. Viết **Row Level Security (RLS)** để móc khóa Account User ID vào thẳng cơ sở dữ liệu.
-   - Thay các lệnh `localStorage.getItem` thành hàm `supabase.from('jar').select()`...
+3. Thêm nút Logout vào `Topbar.tsx`:
+   - `const supabase = createClient(); await supabase.auth.signOut(); router.push('/login');`
+
+4. Khi dùng Supabase trong Client Component, lấy user bằng:
+   - `const { data: { user } } = await supabase.auth.getUser()`
