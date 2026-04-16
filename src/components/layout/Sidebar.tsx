@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { RoomName } from "@/types";
+import { useMoodSession } from "@/hooks/useMoodSession";
+import { useToast } from "@/components/ui/Toast";
 
 interface SidebarProps {
   activeRoom: RoomName;
@@ -22,18 +24,26 @@ const moods = ["😔", "😴", "😊", "🌟", "🥰"];
 
 export default function Sidebar({ activeRoom, onRoomChange }: SidebarProps) {
   const [activeMood, setActiveMood] = useState<string | null>(null);
+  const { recentMood, saveMood } = useMoodSession();
+  const { toast } = useToast();
 
-  // Lấy trạng thái mood từ Storage khi load
+  // Đồng bộ mood gần nhất từ Supabase
   useEffect(() => {
-    const savedMood = localStorage.getItem("healing_mood");
-    if (savedMood) {
-      setActiveMood(savedMood);
+    if (recentMood) {
+      setActiveMood(recentMood);
     }
-  }, []);
+  }, [recentMood]);
 
-  const handleMoodClick = (mood: string) => {
-    setActiveMood(mood);
-    localStorage.setItem("healing_mood", mood); // Tạm lưu LocalStorage giai đoạn 2
+  const handleMoodClick = async (mood: string) => {
+    setActiveMood(mood); // Optimistic update
+
+    const success = await saveMood(mood, activeRoom);
+    if (success) {
+      toast("Đã ghi nhận cảm xúc ✨");
+    } else {
+      // Fallback: vẫn lưu tạm localStorage
+      localStorage.setItem("healing_mood", mood);
+    }
   };
 
   return (
@@ -68,7 +78,7 @@ export default function Sidebar({ activeRoom, onRoomChange }: SidebarProps) {
         })}
       </nav>
 
-      {/* Mood Tracker (Chỉ hiện trên Desktop) */}
+      {/* Mood Tracker (Desktop) — Giờ lưu Supabase */}
       <div className="hidden md:block p-4 mt-auto border-t border-cream-3/60 mb-2">
         <p className="text-[13px] text-hint mb-3 font-medium px-1 leading-snug">
           Bạn đang cảm thấy thế nào?

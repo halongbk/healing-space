@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, ChevronDown } from "lucide-react";
+import { LogOut, ChevronDown, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function Topbar() {
@@ -184,6 +184,14 @@ export default function Topbar() {
                       <p className="text-[13px] font-medium text-ink truncate">{userName}</p>
                       <p className="text-[11px] text-hint mt-0.5">Thành viên</p>
                     </div>
+                    <Link
+                      href="/profile"
+                      onClick={() => setShowUserMenu(false)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-muted hover:bg-cream hover:text-ink transition-all border-b border-cream-3/50"
+                    >
+                      <User size={15} />
+                      Hồ sơ cá nhân
+                    </Link>
                     <button
                       onClick={handleLogout}
                       disabled={isLoggingOut}

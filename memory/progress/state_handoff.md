@@ -3,43 +3,35 @@ Date: 2026-04-15
 
 ## Tôi đang ở đâu
 
-**Giai đoạn 7: Database Schema + RLS — HOÀN THÀNH**
+**Giai đoạn 6: Auth UI — HOÀN THÀNH**
 
-Đã hoàn thành toàn bộ setup từ Giai đoạn 2 đến 7:
-1. **Supabase Auth** — `src/lib/supabase/client.ts` (Browser) + `server.ts` (Server) đúng chuẩn `@supabase/ssr`
-2. **Middleware** — `src/middleware.ts` bảo vệ `/rooms`, `/dashboard`, redirect `/login`
-3. **Login UI** — `src/app/login/page.tsx` + `actions.ts` (Server Actions)
-4. **5 Rooms** — Component React đầy đủ: Breathe, Still, Feel, Create, Recharge
-5. **Layout** — Topbar, Sidebar (responsive), Hero (đổi màu theo phòng), Toast
-6. **Database Schema** — 3 bảng Supabase với RLS đầy đủ:
-   - `gratitude_jar` — Hũ biết ơn (user_id, content, created_at)
-   - `mood_logs` — Lịch sử cảm xúc (user_id, mood, logged_at)
-   - `journal_releases` — Đếm lần thả tâm thư (user_id, released_at)
-7. **TypeScript types** — `src/types/database.types.ts` sinh từ Supabase
+### Tổng kết chuỗi hoàn thành:
+- Phase 5: Database Schema (5 bảng + RLS + triggers) ✅
+- Phase 6: Auth UI (Login/Register/Logout) ✅
 
----
-
-## Decisions & Notes
-
-- Sử dụng `@supabase/ssr` (KHÔNG dùng `@supabase/auth-helpers` cũ)
-- `src/middleware.ts` là middleware chính — KHÔNG tạo `middleware.ts` ở root
-- `public/sounds/` chưa có file `.mp3` — Topbar sound buttons sẽ báo 404
-- Project chưa có GitHub remote — cần: `git remote add origin <URL>` rồi `git push`
+### File đã tạo/sửa trong Phase 6:
+- `src/app/login/page.tsx` — 2-column layout, fade-in, show/hide password
+- `src/app/login/actions.ts` — Server Actions: login(), signup(), signout() + error translation VN
+- `src/app/register/page.tsx` — Trang đăng ký: 4 fields, client validation, success screen
+- `src/components/layout/Topbar.tsx` — Avatar + user name + dropdown logout
+- `src/app/page.tsx` — Smart redirect: auth → /rooms, no auth → /login
 
 ---
 
-## Messages for next Agent (Giai đoạn 8):
+## Decisions
 
-1. NEXT STEP: Thay `localStorage` trong `FeelRoom.tsx` (Gratitude Jar + mood) bằng Supabase:
-   - Import `database.types.ts` để có type safety
-   - Dùng `createClient()` từ `src/lib/supabase/client.ts`
-   - `supabase.from('gratitude_jar').select().eq('user_id', user.id)`
-   - `supabase.from('mood_logs').insert({ user_id, mood })`
+- Login/Register tách riêng 2 trang thay vì tab switch
+- Signup trả { success: true } thay vì redirect — để hiển thị màn hình "kiểm tra email"
+- Topbar dùng supabase.auth.getUser() client-side để lấy tên
+- Password yêu cầu 8 ký tự (register) thay vì 6
 
-2. Thay mood tracking trong `Sidebar.tsx` (localStorage -> `mood_logs` table)
+---
 
-3. Thêm nút Logout vào `Topbar.tsx`:
-   - `const supabase = createClient(); await supabase.auth.signOut(); router.push('/login');`
+## Messages for next Agent:
 
-4. Khi dùng Supabase trong Client Component, lấy user bằng:
-   - `const { data: { user } } = await supabase.auth.getUser()`
+1. Chưa có GitHub remote — cần tạo repo và push
+2. Chưa test được trong browser (subagent lỗi capacity) — test thủ công:
+   - `npm run dev` → `localhost:3000` → redirect `/login` ✅
+   - `/register` trả 200 ✅
+   - TSC clean ✅
+3. NEXT STEP (Phase 8): Kết nối FeelRoom + Sidebar với Supabase database

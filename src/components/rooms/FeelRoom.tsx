@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { useGratitude } from "@/hooks/useGratitude";
+import { Loader2, Trash2, CloudUpload } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const EMO_RES: Record<string, string> = {
   'Buồn':     'Buồn bã là hoàn toàn bình thường. Hãy cho phép bản thân cảm nhận nó. Thử phòng Breathe hoặc viết ra ở Journal nhé.',
@@ -24,7 +27,7 @@ const EMO_LIST = [
   {icon: '🥰', label: 'Biết ơn'}, {icon: '🌟', label: 'Hứng khởi'}, {icon: '💪', label: 'Tự tin'}, {icon: '🤗', label: 'Được yêu'}
 ];
 
-const GK = 'hs-gratitude';
+const OLD_GK = 'hs-gratitude'; // Key localStorage cũ
 
 export default function FeelRoom() {
   const { toast } = useToast();
@@ -34,6 +37,66 @@ export default function FeelRoom() {
   
   // -- Journal --
   const [journalText, setJournalText] = useState("");
+
+  // -- Gratitude (Supabase) --
+  const { entries, loading: gratLoading, adding, addEntry, deleteEntry } = useGratitude();
+  const [gratInput, setGratInput] = useState("");
+  
+  // -- Migration prompt --
+  const [showMigrate, setShowMigrate] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const migrateChecked = useRef(false);
+
+  // Kiểm tra localStorage có data cũ không
+  useEffect(() => {
+    if (migrateChecked.current) return;
+    migrateChecked.current = true;
+
+    const oldData = localStorage.getItem(OLD_GK);
+    if (oldData) {
+      try {
+        const parsed = JSON.parse(oldData);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setShowMigrate(true);
+        }
+      } catch {
+        // Data corrupted → xóa luôn
+        localStorage.removeItem(OLD_GK);
+      }
+    }
+  }, []);
+
+  const handleMigrate = async () => {
+    const oldData = localStorage.getItem(OLD_GK);
+    if (!oldData) return;
+
+    setMigrating(true);
+    try {
+      const items: { text: string; date: string }[] = JSON.parse(oldData);
+      let success = 0;
+
+      for (const item of items) {
+        const ok = await addEntry(item.text);
+        if (ok) success++;
+      }
+
+      // Xóa localStorage
+      localStorage.removeItem(OLD_GK);
+      setShowMigrate(false);
+      toast(
+        `✨ Đã đồng bộ ${success} mục lên cloud!`,
+        "Dữ liệu giờ sẽ theo bạn đến mọi thiết bị"
+      );
+    } catch {
+      toast("Lỗi đồng bộ", "Vui lòng thử lại sau");
+    } finally {
+      setMigrating(false);
+    }
+  };
+
+  const dismissMigrate = () => {
+    setShowMigrate(false);
+  };
 
   const releaseJournal = () => {
     if (!journalText.trim()) { 
@@ -56,31 +119,64 @@ export default function FeelRoom() {
     }, 400);
   };
 
-  // -- Gratitude Jar --
-  const [gratInput, setGratInput] = useState("");
-  const [gratList, setGratList] = useState<{text: string, date: string}[]>([]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(GK);
-    if (saved) setGratList(JSON.parse(saved));
-  }, []);
-
-  const addGratitude = () => {
+  const handleAddGratitude = async () => {
     if (!gratInput.trim()) return;
-    const item = { text: gratInput.trim(), date: new Date().toLocaleDateString('vi-VN') };
-    const newList = [item, ...gratList].slice(0, 30);
-    setGratList(newList);
-    localStorage.setItem(GK, JSON.stringify(newList));
-    setGratInput('');
-    toast('💛 Đã thêm vào Hũ Biết Ơn!');
+    const success = await addEntry(gratInput.trim());
+    if (success) {
+      setGratInput('');
+      toast('💛 Đã thêm vào Hũ Biết Ơn!');
+    } else {
+      toast('Lỗi', 'Không thể thêm entry. Vui lòng thử lại.');
+    }
+  };
+
+  const handleDeleteGratitude = async (id: string) => {
+    const success = await deleteEntry(id);
+    if (success) {
+      toast('Đã xóa khỏi hũ');
+    }
   };
 
   return (
     <div className="flex flex-col gap-4 max-w-[960px] mx-auto w-full">
-      {/* CSS Block inject cho Animation Float Particle */}
+      {/* CSS for float animation */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes float-p { 0%{transform:translateY(0) scale(1);opacity:1} 100%{transform:translateY(-200px) scale(0);opacity:0} }
       `}}/>
+
+      {/* ═══ Migration Banner ═══ */}
+      <AnimatePresence>
+        {showMigrate && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-sky-light border border-sky/20 rounded-[14px] p-4 flex items-center gap-4"
+          >
+            <CloudUpload size={24} className="text-sky shrink-0" />
+            <div className="flex-1">
+              <p className="text-[13px] font-medium text-ink">Phát hiện dữ liệu cũ trong máy bạn</p>
+              <p className="text-[11px] text-muted mt-0.5">Bạn có muốn đồng bộ Hũ Biết Ơn lên tài khoản cloud?</p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={dismissMigrate}
+                className="text-[11px] text-hint px-3 py-1.5 rounded-lg hover:bg-white transition-colors"
+              >
+                Để sau
+              </button>
+              <button
+                onClick={handleMigrate}
+                disabled={migrating}
+                className="text-[11px] text-white bg-sky px-3 py-1.5 rounded-lg hover:bg-sky-dark transition-colors disabled:opacity-60 flex items-center gap-1.5"
+              >
+                {migrating ? <Loader2 size={12} className="animate-spin" /> : null}
+                {migrating ? "Đang đồng bộ..." : "Đồng bộ ngay"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Emotion Card */}
       <div className="bg-white border border-cream-3 rounded-[18px] overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,.06)]">
@@ -142,33 +238,60 @@ export default function FeelRoom() {
         </div>
       </div>
 
-      {/* Gratitude Jar */}
+      {/* Gratitude Jar — Now with Supabase! */}
       <div className="bg-white border border-cream-3 rounded-[18px] p-5 md:p-[26px] shadow-[0_2px_20px_rgba(0,0,0,.06)]">
         <div className="text-[13px] font-medium text-ink mb-3 flex items-center justify-between">
-          <span>🫙 Hũ Biết Ơn <span className="text-[11px] text-hint font-normal ml-1">Lưu trong máy bạn</span></span>
+          <span>🫙 Hũ Biết Ơn <span className="text-[11px] text-moss font-normal ml-1 inline-flex items-center gap-1">☁️ Lưu trên cloud</span></span>
+          {gratLoading && <Loader2 size={14} className="animate-spin text-hint" />}
         </div>
         <div className="flex gap-2 mb-3">
           <input 
             value={gratInput}
             onChange={(e) => setGratInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addGratitude()}
+            onKeyDown={(e) => e.key === 'Enter' && handleAddGratitude()}
             placeholder="Hôm nay tôi biết ơn..."
-            className="flex-1 p-2.5 px-3.5 border-[1.5px] border-cream-3 rounded-[10px] text-[13px] font-sans text-ink bg-white outline-none transition-colors focus:border-dawn"
+            disabled={adding}
+            className="flex-1 p-2.5 px-3.5 border-[1.5px] border-cream-3 rounded-[10px] text-[13px] font-sans text-ink bg-white outline-none transition-colors focus:border-dawn disabled:opacity-60"
           />
-          <button className="bg-dawn text-white rounded-[10px] px-[14px] py-[6px] text-[12px] font-medium hover:opacity-85 transition-opacity inline-flex items-center" onClick={addGratitude}>
-            + Thêm
+          <button 
+            className="bg-dawn text-white rounded-[10px] px-[14px] py-[6px] text-[12px] font-medium hover:opacity-85 transition-opacity inline-flex items-center gap-1 disabled:opacity-60" 
+            onClick={handleAddGratitude}
+            disabled={adding}
+          >
+            {adding ? <Loader2 size={12} className="animate-spin" /> : "+"} Thêm
           </button>
         </div>
         <div className="flex flex-col gap-2 max-h-[240px] overflow-y-auto">
-          {gratList.length === 0 ? (
+          {gratLoading ? (
+            <div className="text-center p-5 text-hint italic font-serif text-[14px] flex items-center justify-center gap-2">
+              <Loader2 size={16} className="animate-spin" /> Đang tải...
+            </div>
+          ) : entries.length === 0 ? (
             <div className="text-center p-5 text-hint italic font-serif text-[15px]">Hũ đang trống · Thêm điều đầu tiên bạn biết ơn ✨</div>
           ) : (
-            gratList.map((g, i) => (
-              <div key={i} className="rounded-[10px] p-3 px-3.5 flex items-start gap-2.5 border backdrop-blur-sm" style={{ background: "linear-gradient(135deg,var(--sandl),#fff)", borderColor: "rgba(176,128,80,.2)" }}>
-                 <span className="text-[15px] shrink-0 mt-0.5">💛</span>
-                 <div className="font-serif text-[14px] italic text-ink leading-[1.5] flex-1">{g.text}</div>
-                 <div className="text-[10px] text-hint shrink-0 mt-1">{g.date}</div>
-              </div>
+            entries.map((g) => (
+              <motion.div 
+                key={g.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-[10px] p-3 px-3.5 flex items-start gap-2.5 border backdrop-blur-sm group" 
+                style={{ background: "linear-gradient(135deg,var(--sandl),#fff)", borderColor: "rgba(176,128,80,.2)" }}
+              >
+                <span className="text-[15px] shrink-0 mt-0.5">💛</span>
+                <div className="font-serif text-[14px] italic text-ink leading-[1.5] flex-1">{g.text}</div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-[10px] text-hint mt-1">
+                    {new Date(g.created_at).toLocaleDateString('vi-VN')}
+                  </div>
+                  <button 
+                    onClick={() => handleDeleteGratitude(g.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-hint hover:text-rose p-1"
+                    title="Xóa"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </motion.div>
             ))
           )}
         </div>

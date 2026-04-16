@@ -62,7 +62,7 @@ export async function middleware(request: NextRequest) {
   // Bảo vệ Auth routes
   if (
     !user && 
-    (request.nextUrl.pathname.startsWith('/rooms') || request.nextUrl.pathname.startsWith('/dashboard'))
+    (request.nextUrl.pathname.startsWith('/rooms') || request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/profile'))
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
