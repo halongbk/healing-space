@@ -8,7 +8,6 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  // Middleware của `@supabase/ssr` yêu cầu đồng bộ cookies giữa request và response
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -18,62 +17,44 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Update request cookie, sau đó update response cookie
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          request.cookies.set({ name, value, ...options })
           response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+            request: { headers: request.headers },
           })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          request.cookies.set({ name, value: '', ...options })
           response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+            request: { headers: request.headers },
           })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          response.cookies.set({ name, value: '', ...options })
         },
       },
     }
   )
 
-  // Gọi getUser để Supabase làm tươi session
+  // Dùng getUser() — xác minh với Supabase server (an toàn nhất)
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Bảo vệ Auth routes
-  if (
-    !user && 
-    (request.nextUrl.pathname.startsWith('/rooms') || request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/profile'))
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  const pathname = request.nextUrl.pathname
+
+  // Các route cần đăng nhập
+  const protectedRoutes = ['/rooms', '/dashboard', '/profile']
+  const isProtected = protectedRoutes.some(route => pathname.startsWith(route))
+
+  // Chưa đăng nhập → redirect /login
+  if (!user && isProtected) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    return NextResponse.redirect(loginUrl)
   }
 
-  // Chặn đăng nhập lại nếu đã đăng nhập
-  if (user && request.nextUrl.pathname.startsWith('/login')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/rooms'
-    return NextResponse.redirect(url)
+  // Đã đăng nhập → không vào /login hoặc /register nữa
+  if (user && (pathname.startsWith('/login') || pathname.startsWith('/register'))) {
+    const roomsUrl = request.nextUrl.clone()
+    roomsUrl.pathname = '/rooms'
+    return NextResponse.redirect(roomsUrl)
   }
 
   return response
@@ -82,12 +63,11 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match tất cả các request path, NGOẠI TRỪ:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - sounds (thư mục chứa file âm thanh /sounds/)
-     * - Hình ảnh tĩnh khác (.svg, .png...)
+     * Match tất cả request path, NGOẠI TRỪ:
+     * - _next/static, _next/image
+     * - favicon.ico
+     * - sounds/ (file âm thanh)
+     * - Hình ảnh tĩnh (.svg, .png, .jpg...)
      */
     '/((?!_next/static|_next/image|favicon.ico|sounds|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
