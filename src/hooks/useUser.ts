@@ -49,7 +49,6 @@ export function useUser(): UseUserReturn {
       if (profileError) {
         // Profile chưa tồn tại (trigger chưa chạy xong) — dùng auth metadata
         setProfile(null);
-        console.warn("Profile chưa có, dùng auth metadata:", profileError.message);
       } else {
         setProfile(profileData as User);
       }

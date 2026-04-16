@@ -66,8 +66,7 @@ export function useMoodSession(): UseMoodSessionReturn {
 
       setRecentMood(mood);
       return true;
-    } catch (err) {
-      console.error("Lỗi lưu mood:", err);
+    } catch {
       return false;
     }
   };

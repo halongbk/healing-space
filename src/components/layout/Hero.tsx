@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { RoomName } from "@/types";
 
@@ -8,8 +8,15 @@ interface HeroProps {
   room: RoomName;
 }
 
+interface RoomConfig {
+  gradient: string;
+  pill: string;
+  title: ReactNode;
+  sub: string;
+}
+
 // Cấu hình nội dung & màu sắc cho từng phòng dựa theo yêu cầu
-const roomConfigs: Record<RoomName, any> = {
+const roomConfigs: Record<RoomName, RoomConfig> = {
   breathe: {
     gradient: "linear-gradient(150deg, #0A180E, #162810)",
     pill: "🌿 Breathe Room",
