@@ -4,7 +4,8 @@ Ngày: 2026-04-16
 ## Repository
 - **GitHub**: https://github.com/halongbk/healing-space
 - **Branch chính**: `master`
-- **Deploy**: Chưa (cần kết nối Vercel)
+- **Production (Vercel)**: https://healing-space-fawn.vercel.app
+- **Auto deploy**: Mỗi lần push master → Vercel build tự động
 
 ## Tổng quan
 
