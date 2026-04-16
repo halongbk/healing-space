@@ -1,6 +1,11 @@
 # HEALING SPACE — HANDOFF Giai đoạn 2 → Giai đoạn 3
 Ngày: 2026-04-16
 
+## Repository
+- **GitHub**: https://github.com/halongbk/healing-space
+- **Branch chính**: `master`
+- **Deploy**: Chưa (cần kết nối Vercel)
+
 ## Tổng quan
 
 Giai đoạn 2 đã hoàn chỉnh toàn bộ hệ thống **Authentication + Database + Data Sync**. Dự án sẵn sàng cho Giai đoạn 3.
