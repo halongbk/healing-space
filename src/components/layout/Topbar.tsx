@@ -42,44 +42,54 @@ export default function Topbar() {
     updateTime();
     const timer = setInterval(updateTime, 1000);
 
-    // Lấy thông tin user từ session
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    // Hàm fetch Auth an toàn
+    const checkAuth = async () => {
       try {
-        if (user) {
-          const name = user.user_metadata?.display_name || user.email?.split("@")[0] || "User";
-          setUserName(name);
-          // Lấy thêm role để hiển thị nut Admin
-          const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
-          if (userData) setUserRole(userData.role);
-        } else {
+        const { data, error } = await supabase.auth.getUser();
+        if (error || !data?.user) {
           setUserName(null);
           setUserRole(null);
+          return;
+        }
+        
+        const user = data.user;
+        const name = user.user_metadata?.display_name || user.email?.split("@")[0] || "User";
+        setUserName(name);
+
+        // Fetch db nhẹ nhàng, không để crash
+        const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
+        if (userData?.role) {
+          setUserRole(userData.role);
         }
       } catch (err) {
-        console.error("topbar error:", err);
+        console.error("topbar checkAuth err:", err);
       } finally {
-        setAuthLoaded(true); // Đã biết trạng thái auth
+        setAuthLoaded(true);
       }
-    });
+    };
+
+    checkAuth();
 
     // Lắng nghe thay đổi auth state (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authData } = supabase.auth.onAuthStateChange(async (_event, session) => {
       try {
         if (session?.user) {
           const name = session.user.user_metadata?.display_name || session.user.email?.split("@")[0] || "User";
           setUserName(name);
           const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
-          if (userData) setUserRole(userData.role);
+          if (userData?.role) setUserRole(userData.role);
         } else {
           setUserName(null);
           setUserRole(null);
         }
       } catch (err) {
-        console.error("topbar auth change error:", err);
+        console.error("topbar auth change err:", err);
       } finally {
         setAuthLoaded(true);
       }
     });
+
+    const subscription = authData?.subscription;
 
     // Click outside to close menu
     const handleClickOutside = (e: MouseEvent) => {
