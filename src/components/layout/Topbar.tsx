@@ -91,6 +91,11 @@ export default function Topbar() {
 
     const subscription = authData?.subscription;
 
+    // Fallback: nếu vì bất cứ lý do gì authLoaded vẫn false sau 3 giây => ép hiện UI
+    const authTimeout = setTimeout(() => {
+      setAuthLoaded(true);
+    }, 3000);
+
     // Click outside to close menu
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -101,7 +106,8 @@ export default function Topbar() {
 
     return () => {
       clearInterval(timer);
-      subscription.unsubscribe();
+      clearTimeout(authTimeout);
+      subscription?.unsubscribe();
       document.removeEventListener("mousedown", handleClickOutside);
       Object.values(audioRefs.current).forEach((audio) => {
         audio.pause();
