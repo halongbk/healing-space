@@ -40,14 +40,34 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // Các route cần đăng nhập
-  const protectedRoutes = ['/rooms', '/dashboard', '/profile']
+  const protectedRoutes = ['/rooms', '/dashboard', '/profile', '/admin']
   const isProtected = protectedRoutes.some(route => pathname.startsWith(route))
 
+  const isAdminRoute = pathname.startsWith('/admin')
+  const isForbiddenRoute = pathname.startsWith('/admin/forbidden')
+
   // Chưa đăng nhập → redirect /login
-  if (!user && isProtected) {
+  if (!user && isProtected && !isForbiddenRoute) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/login'
     return NextResponse.redirect(loginUrl)
+  }
+
+  // Xử lý riêng cho /admin (bảo vệ quyền truy cập Admin)
+  if (user && isAdminRoute && !isForbiddenRoute) {
+    // Query user role. Middleware chạy ở Edge runtime nên select nhanh 1 column
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (userData?.role !== 'admin') {
+      // Redirect sang trang báo lỗi 403
+      const forbiddenUrl = request.nextUrl.clone()
+      forbiddenUrl.pathname = '/admin/forbidden'
+      return NextResponse.redirect(forbiddenUrl)
+    }
   }
 
   // Đã đăng nhập → không vào /login hoặc /register nữa
