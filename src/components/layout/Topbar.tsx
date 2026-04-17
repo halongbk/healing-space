@@ -44,31 +44,41 @@ export default function Topbar() {
 
     // Lấy thông tin user từ session
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (user) {
-        const name = user.user_metadata?.display_name || user.email?.split("@")[0] || "User";
-        setUserName(name);
-        // Lấy thêm role để hiển thị nut Admin
-        const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
-        if (userData) setUserRole(userData.role);
-      } else {
-        setUserName(null);
-        setUserRole(null);
+      try {
+        if (user) {
+          const name = user.user_metadata?.display_name || user.email?.split("@")[0] || "User";
+          setUserName(name);
+          // Lấy thêm role để hiển thị nut Admin
+          const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
+          if (userData) setUserRole(userData.role);
+        } else {
+          setUserName(null);
+          setUserRole(null);
+        }
+      } catch (err) {
+        console.error("topbar error:", err);
+      } finally {
+        setAuthLoaded(true); // Đã biết trạng thái auth
       }
-      setAuthLoaded(true); // Đã biết trạng thái auth
     });
 
     // Lắng nghe thay đổi auth state (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const name = session.user.user_metadata?.display_name || session.user.email?.split("@")[0] || "User";
-        setUserName(name);
-        const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
-        if (userData) setUserRole(userData.role);
-      } else {
-        setUserName(null);
-        setUserRole(null);
+      try {
+        if (session?.user) {
+          const name = session.user.user_metadata?.display_name || session.user.email?.split("@")[0] || "User";
+          setUserName(name);
+          const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+          if (userData) setUserRole(userData.role);
+        } else {
+          setUserName(null);
+          setUserRole(null);
+        }
+      } catch (err) {
+        console.error("topbar auth change error:", err);
+      } finally {
+        setAuthLoaded(true);
       }
-      setAuthLoaded(true);
     });
 
     // Click outside to close menu
