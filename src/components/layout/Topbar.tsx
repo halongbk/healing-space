@@ -57,7 +57,10 @@ export default function Topbar() {
         setUserName(name);
 
         // Fetch db nhẹ nhàng, không để crash
-        const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
+        const { data: userData, error: dbError } = await supabase.from('users').select('*').eq('id', user.id).single();
+        if (dbError) {
+          console.error("topbar select user error:", dbError);
+        }
         if (userData?.role) {
           setUserRole(userData.role);
         }
@@ -76,7 +79,10 @@ export default function Topbar() {
         if (session?.user) {
           const name = session.user.user_metadata?.display_name || session.user.email?.split("@")[0] || "User";
           setUserName(name);
-          const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+          const { data: userData, error: dbError } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+          if (dbError) {
+            console.error("topbar listener error:", dbError);
+          }
           if (userData?.role) setUserRole(userData.role);
         } else {
           setUserName(null);
