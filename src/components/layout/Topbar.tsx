@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, ChevronDown, User, LogIn } from "lucide-react";
+import { LogOut, ChevronDown, User, LogIn, ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function Topbar() {
@@ -12,6 +12,7 @@ export default function Topbar() {
   const [timeStr, setTimeStr] = useState<string>("");
   const [toast, setToast] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [authLoaded, setAuthLoaded] = useState(false); // Tránh flash
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -42,23 +43,30 @@ export default function Topbar() {
     const timer = setInterval(updateTime, 1000);
 
     // Lấy thông tin user từ session
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
         const name = user.user_metadata?.display_name || user.email?.split("@")[0] || "User";
         setUserName(name);
+        // Lấy thêm role để hiển thị nut Admin
+        const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
+        if (userData) setUserRole(userData.role);
       } else {
         setUserName(null);
+        setUserRole(null);
       }
       setAuthLoaded(true); // Đã biết trạng thái auth
     });
 
     // Lắng nghe thay đổi auth state (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const name = session.user.user_metadata?.display_name || session.user.email?.split("@")[0] || "User";
         setUserName(name);
+        const { data: userData } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+        if (userData) setUserRole(userData.role);
       } else {
         setUserName(null);
+        setUserRole(null);
       }
       setAuthLoaded(true);
     });
@@ -209,6 +217,16 @@ export default function Topbar() {
                           <User size={15} />
                           Hồ sơ cá nhân
                         </Link>
+                        {userRole === 'admin' && (
+                          <Link
+                            href="/admin"
+                            onClick={() => setShowUserMenu(false)}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-moss hover:bg-cream transition-all border-b border-cream-3/50 font-medium"
+                          >
+                            <ShieldAlert size={15} />
+                            Quản trị hệ thống
+                          </Link>
+                        )}
                         <button
                           onClick={handleLogout}
                           disabled={isLoggingOut}
