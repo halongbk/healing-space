@@ -46,7 +46,7 @@ function Stars() {
   );
 }
 
-export default function MysteryRoom() {
+export default function MysteryRoom({ mood }: { mood?: string }) {
   // Inject star CSS once
   const injected = useRef(false);
   useEffect(() => {
@@ -91,7 +91,7 @@ export default function MysteryRoom() {
 
         {/* MysteryBox Component */}
         <div className="w-full max-w-2xl">
-          <MysteryBox />
+          <MysteryBox mood={mood} />
         </div>
       </div>
     </div>

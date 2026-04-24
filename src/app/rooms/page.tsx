@@ -25,6 +25,7 @@ import Toast from "@/components/ui/Toast";
  */
 export default function RoomsLayoutPage() {
   const [activeRoom, setActiveRoom] = useState<RoomName>("breathe");
+  const [currentMood, setCurrentMood] = useState<string | undefined>(undefined);
 
   // Router nội bộ chuyển đổi Component phòng bên dưới Hero
   const renderRoomContent = () => {
@@ -34,7 +35,7 @@ export default function RoomsLayoutPage() {
       case "feel": return <FeelRoom />;
       case "create": return <CreateRoom />;
       case "recharge": return <RechargeRoom />;
-      case "mystery": return <MysteryRoom />;
+      case "mystery": return <MysteryRoom mood={currentMood} />;
       default: return <BreatheRoom />;
     }
   };
@@ -46,7 +47,7 @@ export default function RoomsLayoutPage() {
       
       {/* 2. Split layout: Sidebar trái & Main Space phải */}
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative">
-        <Sidebar activeRoom={activeRoom} onRoomChange={setActiveRoom} />
+        <Sidebar activeRoom={activeRoom} onRoomChange={setActiveRoom} onMoodChange={setCurrentMood} />
         
         {/* Main Workspace container */}
         <main className="flex-1 overflow-y-auto w-full p-4 md:p-6 lg:p-8 flex flex-col gap-6 scroll-smooth">

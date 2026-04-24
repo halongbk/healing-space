@@ -73,11 +73,19 @@ export function useRandomContent(options: UseRandomContentOptions): UseRandomCon
     setIsLoading(true);
     setError(null);
 
+    const controller = new AbortController();
+    // Timeout 5 giây → Edge case: mạng chậm
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     try {
       const params = new URLSearchParams({ room });
       if (mood) params.set("mood", mood);
 
-      const res = await fetch(`/api/content/random?${params.toString()}`);
+      const res = await fetch(`/api/content/random?${params.toString()}`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -93,7 +101,6 @@ export function useRandomContent(options: UseRandomContentOptions): UseRandomCon
 
       // Auto track sau khi nhận content
       if (autoTrack && newContent) {
-        // Delay nhỏ để đảm bảo UI đã render
         setTimeout(() => {
           fetch("/api/sessions/track", {
             method: "POST",
@@ -107,8 +114,13 @@ export function useRandomContent(options: UseRandomContentOptions): UseRandomCon
           }).catch(() => {});
         }, 500);
       }
-    } catch (err) {
-      setError("Không thể tải nội dung. Vui lòng thử lại.");
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === "AbortError") {
+        setError("timeout"); // Signal đặc biệt để UI hiện nút Thử lại
+      } else {
+        setError("Không thể tải nội dung. Vui lòng thử lại.");
+      }
       console.error("[useRandomContent] fetch error:", err);
     } finally {
       setIsLoading(false);

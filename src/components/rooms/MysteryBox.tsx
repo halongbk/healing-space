@@ -128,7 +128,7 @@ export default function MysteryBox({ mood, prefetchedContent }: MysteryBoxProps)
   const particleCount = 16;
   const hasTriggeredRef = useRef(false);
 
-  const { content, isLoading, fetch: fetchContent, refetch } = useRandomContent({
+  const { content, isLoading, error, fetch: fetchContent, refetch } = useRandomContent({
     room: "mystery",
     mood,
     autoTrack: true,
@@ -238,7 +238,7 @@ export default function MysteryBox({ mood, prefetchedContent }: MysteryBoxProps)
           </motion.div>
         )}
 
-        {/* ── LOADING ── */}
+        {/* ── LOADING / ERROR ── */}
         {boxState === "loading" && (
           <motion.div
             key="loading"
@@ -247,14 +247,31 @@ export default function MysteryBox({ mood, prefetchedContent }: MysteryBoxProps)
             exit={{ opacity: 0 }}
             className="w-full max-w-md space-y-8 text-center"
           >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-              className="mx-auto w-8 h-8"
-            >
-              <Sparkles size={32} className="text-purple-300" />
-            </motion.div>
-            <ContentSkeleton />
+            {error ? (
+              // Edge case: timeout hoặc lỗi mạng
+              <div className="space-y-4">
+                <p className="text-white/60 text-sm">
+                  {error === "timeout" ? "Mạng chậm quá... ⏳" : "Có lỗi xảy ra"}
+                </p>
+                <button
+                  onClick={() => { fetchContent(); }}
+                  className="px-6 py-2.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-white/90 text-sm font-medium transition-all"
+                >
+                  🔄 Thử lại
+                </button>
+              </div>
+            ) : (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  className="mx-auto w-8 h-8"
+                >
+                  <Sparkles size={32} className="text-purple-300" />
+                </motion.div>
+                <ContentSkeleton />
+              </>
+            )}
           </motion.div>
         )}
 

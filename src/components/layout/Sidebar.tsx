@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 interface SidebarProps {
   activeRoom: RoomName;
   onRoomChange: (room: RoomName) => void;
+  onMoodChange?: (mood: string) => void;
 }
 
 const rooms: { id: RoomName; icon: string; label: string }[] = [
@@ -22,7 +23,7 @@ const rooms: { id: RoomName; icon: string; label: string }[] = [
 
 const moods = ["😔", "😴", "😊", "🌟", "🥰"];
 
-export default function Sidebar({ activeRoom, onRoomChange }: SidebarProps) {
+export default function Sidebar({ activeRoom, onRoomChange, onMoodChange }: SidebarProps) {
   const [activeMood, setActiveMood] = useState<string | null>(null);
   const { recentMood, saveMood } = useMoodSession();
   const { toast } = useToast();
@@ -42,6 +43,7 @@ export default function Sidebar({ activeRoom, onRoomChange }: SidebarProps) {
 
   const handleMoodClick = async (mood: string) => {
     setActiveMood(mood); // Optimistic update
+    onMoodChange?.(mood); // Báo cho parent biết mood mới
 
     const success = await saveMood(mood, activeRoom);
     if (success) {
