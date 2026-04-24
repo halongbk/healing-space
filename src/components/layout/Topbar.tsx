@@ -56,14 +56,9 @@ export default function Topbar() {
         const name = user.user_metadata?.display_name || user.email?.split("@")[0] || "User";
         setUserName(name);
 
-        // Fetch db nhẹ nhàng, không để crash
-        const { data: userData, error: dbError } = await supabase.from('users').select('*').eq('id', user.id).single();
-        if (dbError) {
-          console.error("topbar select user error:", dbError);
-        }
-        if (userData?.role) {
-          setUserRole(userData.role);
-        }
+        // Đọc role trực tiếp từ JWT app_metadata — không cần query DB, không bị RLS
+        const role = user.app_metadata?.role;
+        if (role) setUserRole(role);
       } catch (err) {
         console.error("topbar checkAuth err:", err);
       } finally {
@@ -79,11 +74,9 @@ export default function Topbar() {
         if (session?.user) {
           const name = session.user.user_metadata?.display_name || session.user.email?.split("@")[0] || "User";
           setUserName(name);
-          const { data: userData, error: dbError } = await supabase.from('users').select('*').eq('id', session.user.id).single();
-          if (dbError) {
-            console.error("topbar listener error:", dbError);
-          }
-          if (userData?.role) setUserRole(userData.role);
+          // Đọc role từ JWT app_metadata
+          const role = session.user.app_metadata?.role;
+          if (role) setUserRole(role);
         } else {
           setUserName(null);
           setUserRole(null);

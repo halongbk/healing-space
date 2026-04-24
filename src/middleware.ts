@@ -55,15 +55,10 @@ export async function middleware(request: NextRequest) {
 
   // Xử lý riêng cho /admin (bảo vệ quyền truy cập Admin)
   if (user && isAdminRoute && !isForbiddenRoute) {
-    // Query user role. Middleware chạy ở Edge runtime nên select nhanh 1 column
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    // Đọc role từ JWT app_metadata (không bị RLS block, không cần query DB)
+    const role = user.app_metadata?.role
 
-    if (userData?.role !== 'admin') {
-      // Redirect sang trang báo lỗi 403
+    if (role !== 'admin') {
       const forbiddenUrl = request.nextUrl.clone()
       forbiddenUrl.pathname = '/admin/forbidden'
       return NextResponse.redirect(forbiddenUrl)
