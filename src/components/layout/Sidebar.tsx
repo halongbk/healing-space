@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { RoomName } from "@/types";
 import { useMoodSession } from "@/hooks/useMoodSession";
@@ -26,6 +26,12 @@ export default function Sidebar({ activeRoom, onRoomChange }: SidebarProps) {
   const [activeMood, setActiveMood] = useState<string | null>(null);
   const { recentMood, saveMood } = useMoodSession();
   const { toast } = useToast();
+
+  // Prefetch mystery content khi hover vào Mystery room
+  const prefetchMystery = useCallback(() => {
+    // Gọi API trước để cache tại browser (Next.js sẽ dùng lại)
+    fetch("/api/content/random?room=mystery").catch(() => {});
+  }, []);
 
   // Đồng bộ mood gần nhất từ Supabase
   useEffect(() => {
@@ -60,12 +66,14 @@ export default function Sidebar({ activeRoom, onRoomChange }: SidebarProps) {
       <nav className="flex md:flex-col gap-1 p-2 md:p-4">
         {rooms.map((room) => {
           const isActive = activeRoom === room.id;
+          const isMystery = room.id === "mystery";
           return (
             <button
               key={room.id}
               onClick={() => onRoomChange(room.id)}
+              onMouseEnter={isMystery ? prefetchMystery : undefined}
               className={`
-                flex items-center gap-3 px-4 py-2.5 rounded-full md:rounded-lg md:border-l-2 text-left transition-all whitespace-nowrap
+                relative flex items-center gap-3 px-4 py-2.5 rounded-full md:rounded-lg md:border-l-2 text-left transition-all whitespace-nowrap
                 ${isActive 
                   ? "md:border-ink bg-white md:bg-cream-2 font-medium text-ink shadow-sm md:shadow-none" 
                   : "border-transparent text-muted hover:bg-cream-2 hover:text-ink"}
@@ -73,6 +81,12 @@ export default function Sidebar({ activeRoom, onRoomChange }: SidebarProps) {
             >
               <span className="text-[1.1rem] opacity-90">{room.icon}</span>
               <span className="hidden md:block text-[15px]">{room.label}</span>
+              {/* Badge NEW cho Mystery */}
+              {isMystery && !isActive && (
+                <span className="hidden md:inline-flex absolute right-2 top-1/2 -translate-y-1/2 items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide bg-purple-100 text-purple-600 uppercase">
+                  NEW
+                </span>
+              )}
             </button>
           );
         })}

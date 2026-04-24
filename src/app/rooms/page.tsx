@@ -13,19 +13,11 @@ import StillRoom from "@/components/rooms/StillRoom";
 import FeelRoom from "@/components/rooms/FeelRoom";
 import CreateRoom from "@/components/rooms/CreateRoom";
 import RechargeRoom from "@/components/rooms/RechargeRoom";
+import MysteryRoom from "@/components/rooms/MysteryRoom";
 
 // Global Toast
 import Toast from "@/components/ui/Toast";
 
-// Mystery component tạm thời (Giai đoạn 3 sẽ hoàn thiện sau)
-function MysteryRoom() {
-  return (
-    <div className="rounded-2xl bg-[#0A0A18]/5 border border-[#181028]/20 p-8 min-h-[300px]">
-      <h2 className="font-serif text-2xl" style={{ color: "#181028" }}>Mystery Box</h2>
-      <p className="mt-2 text-muted">Sắp ra mắt — mở khóa hộp bất ngờ mỗi ngày của không gian.</p>
-    </div>
-  );
-}
 
 /**
  * Trang Rooms - Layout Chính
